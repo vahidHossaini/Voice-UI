@@ -2,18 +2,26 @@ import axios from 'axios'
 import Config from '../common/Config'
 function normalizeServiceError (error:any) {
   const responseData = error?.response?.data
-  if (responseData) return responseData
+  const status = error?.response?.status
+  if (responseData) {
+    if (typeof responseData === 'object') {
+      return status ? { ...responseData, status } : responseData
+    }
+    return status ? { message: String(responseData), status } : { message: String(responseData) }
+  }
 
   const message = String(error?.message ?? '').trim()
   if (message.length > 0) {
     return {
       message,
+      ...(status ? { status } : {}),
     }
   }
 
   if (error?.request) {
     return {
       message: 'ارتباط با سرور برقرار نشد.',
+      ...(status ? { status } : {}),
     }
   }
 
@@ -24,6 +32,24 @@ function normalizeServiceError (error:any) {
 
 export default class BaseServices
 {
+  private static getToken (): string {
+    return window.localStorage.getItem('token') ?? ''
+  }
+
+  private static saveToken (token: unknown): void {
+    if (token) window.localStorage.setItem('token', String(token))
+  }
+
+  static clearToken (): void {
+    window.localStorage.removeItem('token')
+  }
+
+  private static getHeaders (useAuth: boolean = true): { authorization: string } {
+    return {
+      authorization: useAuth ? this.getToken() : '',
+    }
+  }
+
   private static normalizeBearerUrl (url: string): string { 
     const normalizedUrl = String(url ?? '')
     const bearerBase = Config.url + '/'
@@ -43,10 +69,7 @@ console.log('======',url);
     const payload = data && typeof data === 'object'
       ? JSON.parse(JSON.stringify(data))
       : data
-    const headers:{ authorization:string }={ authorization:'' };
-    if(window.localStorage.token && useAuth){
-      headers.authorization= window.localStorage.token
-    }
+    const headers = this.getHeaders(useAuth)
     // StaticValue.showLoading()
     return new Promise((res,rej)=>{
       axios.post(path , payload , { headers })
@@ -54,7 +77,7 @@ console.log('======',url);
     // StaticValue.hideLoading()
           if(response.data.token)
           {
-            window.localStorage.token=response.data.token
+            BaseServices.saveToken(response.data.token)
           }
           res(response.data);
         })
@@ -77,10 +100,7 @@ console.log('======',url);
     const payload = data && typeof data === 'object'
       ? JSON.parse(JSON.stringify(data))
       : data
-    const headers:{ authorization:string }={ authorization:'' };
-    if(window.localStorage.token && useAuth){
-      headers.authorization=window.localStorage.token
-    }
+    const headers = this.getHeaders(useAuth)
     // StaticValue.showLoading()
     return new Promise((res,rej)=>{
       axios.patch(path , payload , { headers })
@@ -88,7 +108,7 @@ console.log('======',url);
     // StaticValue.hideLoading()
           if(response.data.token)
           {
-            window.localStorage.token=response.data.token
+            BaseServices.saveToken(response.data.token)
           }
           res(response.data);
         })
@@ -107,15 +127,12 @@ console.log('======',url);
     const path = this.normalizeBearerUrl(url);
     console.log('-++++++++++',url,path);
 
-    const headers:{ authorization:string }={ authorization:'' };
-    if(window.localStorage.token && useAuth){
-      headers.authorization=window.localStorage.token
-    }
+    const headers = this.getHeaders(useAuth)
     return await axios.put(path , data , { headers })
       .then(function (response:any) {
         if(response.data.token)
         {
-          window.localStorage.token=response.data.token
+          BaseServices.saveToken(response.data.token)
         }
         return response.data.data ?? response.data.token
       })
@@ -126,15 +143,12 @@ console.log('======',url);
   }
   static async delete (url:string,id:unknown,useAuth:boolean=true){
     const path= this.normalizeBearerUrl(url);
-    const headers:{ authorization:string }={ authorization:'' };
-    if(window.localStorage.token && useAuth){
-      headers.authorization=window.localStorage.token
-    }
+    const headers = this.getHeaders(useAuth)
     return await axios.delete(path+'/'+id , { headers })
       .then(function (response:any) {
         if(response.data.token)
         {
-          window.localStorage.token=response.data.token
+          BaseServices.saveToken(response.data.token)
         }
         return response.data.data ?? response.data.token
       })
@@ -145,15 +159,12 @@ console.log('======',url);
   }
   static async get (url:string){
     url = this.normalizeBearerUrl(url)
-    const headers:{ authorization:string }={ authorization:'' };
-    if(window.localStorage.token){
-      headers.authorization=window.localStorage.token
-    }
+    const headers = this.getHeaders()
     return await axios.get(url , { headers })
       .then(function (response:any) {
         if(response.data.token)
         {
-          window.localStorage.token=response.data.token
+          BaseServices.saveToken(response.data.token)
         }
         return response.data.data ?? response.data
       })
@@ -169,15 +180,12 @@ console.log('======',url);
   static async getBlob (url:string,useAuth:boolean=true):Promise<{ data: Blob, headers: Record<string, string> }>
   {
     url = this.normalizeBearerUrl(url)
-    const headers:{ authorization:string }={ authorization:'' };
-    if(window.localStorage.token && useAuth){
-      headers.authorization=window.localStorage.token
-    }
+    const headers = this.getHeaders(useAuth)
     return await axios.get(url , { headers, responseType: 'blob' })
       .then(function (response:any) {
         if(response.headers?.token)
         {
-          window.localStorage.token=response.headers.token
+          BaseServices.saveToken(response.headers.token)
         }
         const normalizedHeaders = Object.keys(response.headers ?? {}).reduce<Record<string, string>>((accumulator, key) => {
           accumulator[String(key).toLowerCase()] = String(response.headers[key] ?? '')
@@ -196,15 +204,12 @@ console.log('======',url);
   static async postBlob (url:string,data:unknown,useAuth:boolean=true):Promise<{ data: Blob, headers: Record<string, string> }>
   {
     url = this.normalizeBearerUrl(url)
-    const headers:{ authorization:string }={ authorization:'' };
-    if(window.localStorage.token && useAuth){
-      headers.authorization=window.localStorage.token
-    }
+    const headers = this.getHeaders(useAuth)
     return await axios.post(url , data , { headers, responseType: 'blob' })
       .then(function (response:any) {
         if(response.data?.token)
         {
-          window.localStorage.token=response.data.token
+          BaseServices.saveToken(response.data.token)
         }
         const normalizedHeaders = Object.keys(response.headers ?? {}).reduce<Record<string, string>>((accumulator, key) => {
           accumulator[String(key).toLowerCase()] = String(response.headers[key] ?? '')
@@ -223,11 +228,7 @@ console.log('======',url);
   static async formData(url:string,data:FormData,useAuth:boolean=true)
   {
     const path = this.normalizeBearerUrl(url);
-    const headers:any={ authorization:'' };
-    if(window.localStorage.token && useAuth){
-      //headers.authorization= window.localStorage.token
-      headers.authorization=window.localStorage.token
-    }
+    const headers = this.getHeaders(useAuth)
     console.log('---------------',headers,data);
 
     return new Promise((res,rej)=>{
@@ -235,7 +236,7 @@ console.log('======',url);
         .then(function (response:any) {
           if(response.data.token)
           {
-            window.localStorage.token=response.data.token
+            BaseServices.saveToken(response.data.token)
           }
           res(response.data);
         })

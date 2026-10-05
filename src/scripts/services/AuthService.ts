@@ -15,7 +15,7 @@ export default class AuthService
 { 
     static async login(username:string, password:string):Promise<any>{
  
-      const data:any = await BaseServices.post(legacyUrl + 'login', { username, password }, true, false)
+      const data:any = await BaseServices.post(legacyUrl + 'login', { username, password }, false, false)
       let resp:any={};
       if(data.token)
       {

@@ -1,0 +1,33 @@
+@font-face {
+  font-family: 'IRANSans';
+  src: url('/fonts/IRANSans.woff2') format('woff2'),
+       url('/fonts/IRANSans.ttf') format('truetype');
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+
+:root {
+  font-family: 'IRANSans', sans-serif;
+}
+
+html,
+body,
+#app,
+.v-application {
+  font-family: 'IRANSans', sans-serif !important;
+}
+
+button,
+input,
+textarea,
+select,
+.v-btn,
+.v-field,
+.v-list-item,
+.v-card,
+.v-dialog,
+.v-alert,
+.v-input {
+  font-family: 'IRANSans', sans-serif !important;
+}

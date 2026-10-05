@@ -98,6 +98,8 @@ async function submit () {
 <style scoped>
 .login-page {
   min-height: 100vh;
+  direction: rtl;
+  text-align: right;
 }
 
 .login-card {

@@ -14,6 +14,7 @@ export interface TranscriptionSegment {
 
 export interface AudioTranscription {
   _id: string
+  title: string
   fileName: string
   mimeType?: string
   fileSize?: number
@@ -37,13 +38,11 @@ function audioUrl (path: string): string {
 }
 
 export default class AudioService {
-  static async uploadAudio (
-    file: File,
-    diarization: DiarizationMode = 'speaker',
-  ): Promise<AudioTranscription> {
+  static async uploadAudio (file: File, title: string): Promise<AudioTranscription> {
     const formData = new FormData()
     formData.append('file', file)
-    formData.append('diarization', diarization)
+    formData.append('title', title)
+    formData.append('diarization', 'channel')
 
     return await BaseServices.formData(
       audioUrl('uploadAudio'),
