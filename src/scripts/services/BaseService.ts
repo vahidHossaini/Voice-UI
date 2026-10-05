@@ -157,6 +157,19 @@ console.log('======',url);
         throw normalizeServiceError(error)
       })
   }
+  static async deleteByQuery (url:string,id:string,useAuth:boolean=true){
+    const path = `${this.normalizeBearerUrl(url)}?id=${encodeURIComponent(id)}`
+    const headers = this.getHeaders(useAuth)
+    return await axios.delete(path, { headers })
+      .then(function (response:any) {
+        BaseServices.saveToken(response.data?.token)
+        return response.data?.data ?? response.data
+      })
+      .catch(function (error:any) {
+        console.log(error)
+        throw normalizeServiceError(error)
+      })
+  }
   static async get (url:string){
     url = this.normalizeBearerUrl(url)
     const headers = this.getHeaders()

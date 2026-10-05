@@ -2,5 +2,6 @@ const buildBranch = String(import.meta.env.VITE_APP_BRANCH ?? '').trim().toLower
 const isDevelopBuild = buildBranch === 'develop'
 
 export default class Config {  
-  static url = 'http://localhost:5980/api/'
+//  static url = 'https://stt.tickado.info/api/'
+   static url = 'http://localhost:5980/api/'
 }

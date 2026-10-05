@@ -63,6 +63,27 @@ export default class AudioService {
     ) as AudioTranscriptionListResponse
   }
 
+  static async listDeletedTranscriptions (): Promise<AudioTranscriptionListResponse> {
+    return await BaseServices.get(
+      audioUrl('listDeletedAudioTranscriptions'),
+    ) as AudioTranscriptionListResponse
+  }
+
+  static async deleteTranscription (id: string): Promise<unknown> {
+    return await BaseServices.deleteByQuery(
+      audioUrl('deleteAudioTranscription'),
+      id,
+    )
+  }
+
+  static async recoverTranscription (id: string): Promise<unknown> {
+    const query = encodeURIComponent(id)
+    return await BaseServices.post(
+      audioUrl(`recoverAudioTranscription?id=${query}`),
+      {},
+    )
+  }
+
   static async downloadAudio (id: string): Promise<Blob> {
     const query = encodeURIComponent(id)
     const response = await BaseServices.getBlob(

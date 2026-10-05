@@ -11,6 +11,9 @@
           <v-btn color="primary" prepend-icon="mdi-plus" @click="openNewFileDialog">
             فایل جدید
           </v-btn>
+          <v-btn variant="outlined" prepend-icon="mdi-trash-can-outline" @click="toggleDeletedList">
+            {{ showDeleted ? 'رکوردهای فعال' : 'حذف‌شده‌ها' }}
+          </v-btn>
           <v-btn variant="outlined" prepend-icon="mdi-logout" @click="$emit('logout')">
             خروج
           </v-btn>
@@ -21,8 +24,8 @@
         <v-col cols="12">
           <v-card rounded="xl" elevation="2">
             <v-card-title class="d-flex align-center justify-space-between pa-6 pb-2">
-              <span>رکوردهای اخیر</span>
-              <v-btn icon="mdi-refresh" variant="text" :loading="loadingList" @click="loadTranscriptions" />
+              <span>{{ showDeleted ? 'رکوردهای حذف‌شده' : 'رکوردهای اخیر' }}</span>
+              <v-btn icon="mdi-refresh" variant="text" :loading="loadingList" @click="loadCurrentList" />
             </v-card-title>
             <v-card-text class="pa-6 pt-3">
               <v-progress-linear v-if="loadingList" indeterminate color="primary" class="mb-4" />
@@ -43,6 +46,7 @@
                   </v-list-item-subtitle>
                   <template #append>
                     <v-btn
+                      v-if="!showDeleted"
                       class="ml-1"
                       variant="tonal"
                       color="primary"
@@ -51,7 +55,31 @@
                     >
                       مشاهده متن
                     </v-btn>
-                    <v-btn icon="mdi-download-outline" variant="text" :loading="downloadingId === item._id" @click="download(item)" />
+                    <v-btn
+                      v-if="!showDeleted"
+                      icon="mdi-download-outline"
+                      variant="text"
+                      :loading="downloadingId === item._id"
+                      @click="download(item)"
+                    />
+                    <v-btn
+                      v-if="!showDeleted"
+                      icon="mdi-delete-outline"
+                      color="error"
+                      variant="text"
+                      :loading="deletingId === item._id"
+                      @click="deleteTranscription(item)"
+                    />
+                    <v-btn
+                      v-else
+                      variant="tonal"
+                      color="primary"
+                      prepend-icon="mdi-restore"
+                      :loading="recoveringId === item._id"
+                      @click="recoverTranscription(item)"
+                    >
+                      بازیابی
+                    </v-btn>
                   </template>
                 </v-list-item>
               </v-list>
@@ -157,6 +185,7 @@ const file = ref<File | File[] | null>(null)
 const title = ref('')
 const newFileDialog = ref(false)
 const textDialog = ref(false)
+const showDeleted = ref(false)
 const items = ref<AudioTranscription[]>([])
 const latest = ref<AudioTranscription | null>(null)
 const selectedTranscription = ref<AudioTranscription | null>(null)
@@ -183,6 +212,8 @@ const mergedSegments = computed(() => {
 const uploading = ref(false)
 const loadingList = ref(false)
 const downloadingId = ref('')
+const deletingId = ref('')
+const recoveringId = ref('')
 const errorMessage = ref('')
 
 const selectedFile = computed<File | null>(() => {
@@ -258,11 +289,24 @@ async function upload () {
     newFileDialog.value = false
     file.value = null
     title.value = ''
-    await loadTranscriptions()
+    await loadCurrentList()
   } catch (error) {
     errorMessage.value = getErrorMessage(error)
   } finally {
     uploading.value = false
+  }
+}
+
+async function toggleDeletedList () {
+  showDeleted.value = !showDeleted.value
+  await loadCurrentList()
+}
+
+async function loadCurrentList () {
+  if (showDeleted.value) {
+    await loadDeletedTranscriptions()
+  } else {
+    await loadTranscriptions()
   }
 }
 
@@ -275,6 +319,44 @@ async function loadTranscriptions () {
     errorMessage.value = getErrorMessage(error)
   } finally {
     loadingList.value = false
+  }
+}
+
+async function loadDeletedTranscriptions () {
+  loadingList.value = true
+  try {
+    const response = await AudioService.listDeletedTranscriptions()
+    items.value = response.items ?? []
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error)
+  } finally {
+    loadingList.value = false
+  }
+}
+
+async function deleteTranscription (item: AudioTranscription) {
+  if (!window.confirm(`آیا از حذف «${item.title}» مطمئن هستید؟`)) return
+
+  deletingId.value = item._id
+  try {
+    await AudioService.deleteTranscription(item._id)
+    items.value = items.value.filter((current) => current._id !== item._id)
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error)
+  } finally {
+    deletingId.value = ''
+  }
+}
+
+async function recoverTranscription (item: AudioTranscription) {
+  recoveringId.value = item._id
+  try {
+    await AudioService.recoverTranscription(item._id)
+    items.value = items.value.filter((current) => current._id !== item._id)
+  } catch (error) {
+    errorMessage.value = getErrorMessage(error)
+  } finally {
+    recoveringId.value = ''
   }
 }
 
@@ -302,7 +384,7 @@ function formatDate (value: string): string {
   }).format(new Date(value))
 }
 
-onMounted(loadTranscriptions)
+onMounted(loadCurrentList)
 onUnmounted(releaseAudioUrl)
 </script>
 
